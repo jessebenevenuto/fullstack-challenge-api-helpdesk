@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Time" ALTER COLUMN "id" DROP DEFAULT;
+DROP SEQUENCE "Time_id_seq";

@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  technician
+  customer
+}
+
+enum TicketStatus {
+  aberto
+  emAtendimento @map("em_atendimento")
+  encerrado
+}
+
+enum ServiceStatus {
+  ativo
+  inativo
+}
+
+model User {
+  id String @id @default(uuid()) 
+  name String
+  email String @unique
+  password String
+  avatar String?
+  role UserRole
+  lastAssignedAt DateTime @map("last_assigned_at") @default("1970-01-01T00:00:00Z")
+
+  ticketsAsCustomer Ticket[] @relation("CustomerRelation")
+  ticketsAsTechnicians Ticket[] @relation("TechnicianRelation")
+  technicianTimes TechnicianTime[] @relation("TechnicianRelation")
+  services Service[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Time {
+  id Int @id
+  time String @unique
+  minutes Int
+
+  timeTechnicians TechnicianTime[]
+}
+
+model TechnicianTime {
+  technicianId String @map("technician_id")
+  timeId Int @map("time_id")
+
+  technician User @relation("TechnicianRelation", fields: [technicianId], references: [id])
+  time Time @relation(fields: [timeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([technicianId, timeId])
+  @@map("technician_times")
+}
+
+model Ticket {
+  id String @id @default(uuid())
+  title String
+  description String
+  status TicketStatus @default(aberto)
+
+  createdBy String @map("created_by")
+  assignedTo String @map("assigned_to")
+
+  customer User @relation("CustomerRelation", fields: [createdBy], references: [id])
+  technician User @relation("TechnicianRelation", fields: [assignedTo], references: [id])
+
+  ticketServices TicketService[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  @@map("tickets")
+}
+
+model Service {
+  id String @id @default(uuid())
+  title String
+  price Float
+  status ServiceStatus @default(ativo)
+
+  createdBy String @map("created_by")
+  user User @relation(fields: [createdBy], references: [id])
+
+  serviceTickets TicketService[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  @@map("services")
+}
+
+model TicketService {
+  ticketId String @map("ticket_id")
+  serviceId String @map("service_id")
+  isAdditional Boolean @map("is_additional") @default(false)
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([ticketId, serviceId])
+  @@map("ticket_services")
+}
